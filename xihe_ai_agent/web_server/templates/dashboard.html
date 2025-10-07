@@ -1,0 +1,702 @@
+{% extends "base.html" %}
+
+{% block title %}仪表板 - 羲和AI代理系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    .metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .metric-card.success {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+    
+    .metric-card.warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .metric-card.info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    
+    .metric-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .metric-change {
+        font-size: 0.8rem;
+        margin-top: 5px;
+    }
+    
+    .metric-change.positive {
+        color: #4caf50;
+    }
+    
+    .metric-change.negative {
+        color: #f44336;
+    }
+    
+    .chart-container {
+        height: 300px;
+        position: relative;
+    }
+    
+    .activity-item {
+        padding: 12px 0;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+    }
+    
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+    
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+        font-size: 18px;
+    }
+    
+    .activity-icon.success {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .activity-icon.error {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .activity-icon.info {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .activity-content {
+        flex: 1;
+    }
+    
+    .activity-title {
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+    
+    .activity-time {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .task-item {
+        padding: 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .task-item:hover {
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .task-item.running {
+        border-left: 4px solid #28a745;
+    }
+    
+    .task-item.pending {
+        border-left: 4px solid #ffc107;
+    }
+    
+    .task-item.completed {
+        border-left: 4px solid #17a2b8;
+    }
+    
+    .task-item.failed {
+        border-left: 4px solid #dc3545;
+    }
+    
+    .progress-ring {
+        width: 60px;
+        height: 60px;
+        position: relative;
+    }
+    
+    .progress-ring svg {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+    }
+    
+    .progress-ring circle {
+        fill: none;
+        stroke-width: 4;
+    }
+    
+    .progress-ring .background {
+        stroke: #e9ecef;
+    }
+    
+    .progress-ring .progress {
+        stroke: #007bff;
+        stroke-linecap: round;
+        transition: stroke-dasharray 0.3s ease;
+    }
+    
+    .progress-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-online {
+        background-color: #28a745;
+        box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+    }
+    
+    .status-offline {
+        background-color: #dc3545;
+    }
+    
+    .status-warning {
+        background-color: #ffc107;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 系统概览 -->
+    <div class="col-12">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-tachometer-alt me-2"></i>系统概览
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="metric-card success">
+                            <div class="metric-value" id="totalTasks">0</div>
+                            <div class="metric-label">总任务数</div>
+                            <div class="metric-change positive" id="taskChange">+0 今日</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card info">
+                            <div class="metric-value" id="successRate">0%</div>
+                            <div class="metric-label">成功率</div>
+                            <div class="metric-change positive" id="successChange">+0% 较昨日</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card warning">
+                            <div class="metric-value" id="runningTasks">0</div>
+                            <div class="metric-label">运行中任务</div>
+                            <div class="metric-change" id="runningChange">0 活跃</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value" id="uptime">0h</div>
+                            <div class="metric-label">运行时间</div>
+                            <div class="metric-change positive" id="uptimeChange">持续运行</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 任务统计图表 -->
+    <div class="col-md-8">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>任务执行统计
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="taskChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 系统状态 -->
+    <div class="col-md-4">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-server me-2"></i>系统状态
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>AI代理</span>
+                        <span class="status-indicator status-online"></span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-success" style="width: 100%"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>Android设备</span>
+                        <span class="status-indicator" id="androidStatus"></span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar" id="androidProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>屏幕识别</span>
+                        <span class="status-indicator" id="screenStatus"></span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar" id="screenProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>任务调度器</span>
+                        <span class="status-indicator status-online"></span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-success" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 最近活动 -->
+    <div class="col-md-6">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>最近活动
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="recentActivities">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-spinner fa-spin"></i> 加载中...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 任务列表 -->
+    <div class="col-md-6">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-tasks me-2"></i>任务列表
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="taskList">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-spinner fa-spin"></i> 加载中...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 性能监控 -->
+    <div class="col-md-6">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-microchip me-2"></i>性能监控
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="progress-ring">
+                            <svg>
+                                <circle class="background" cx="30" cy="30" r="26"></circle>
+                                <circle class="progress" cx="30" cy="30" r="26" id="cpuProgress"></circle>
+                            </svg>
+                            <div class="progress-text" id="cpuText">0%</div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">CPU使用率</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="progress-ring">
+                            <svg>
+                                <circle class="background" cx="30" cy="30" r="26"></circle>
+                                <circle class="progress" cx="30" cy="30" r="26" id="memoryProgress"></circle>
+                            </svg>
+                            <div class="progress-text" id="memoryText">0%</div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">内存使用率</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="progress-ring">
+                            <svg>
+                                <circle class="background" cx="30" cy="30" r="26"></circle>
+                                <circle class="progress" cx="30" cy="30" r="26" id="diskProgress"></circle>
+                            </svg>
+                            <div class="progress-text" id="diskText">0%</div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">磁盘使用率</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 快速操作 -->
+    <div class="col-md-6">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>快速操作
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <button class="btn btn-primary w-100 mb-2" onclick="quickAction('start_all')">
+                            <i class="fas fa-play me-1"></i> 启动所有
+                        </button>
+                        <button class="btn btn-warning w-100 mb-2" onclick="quickAction('pause_all')">
+                            <i class="fas fa-pause me-1"></i> 暂停所有
+                        </button>
+                        <button class="btn btn-info w-100 mb-2" onclick="quickAction('refresh_status')">
+                            <i class="fas fa-refresh me-1"></i> 刷新状态
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-success w-100 mb-2" onclick="quickAction('export_logs')">
+                            <i class="fas fa-download me-1"></i> 导出日志
+                        </button>
+                        <button class="btn btn-danger w-100 mb-2" onclick="quickAction('clear_cache')">
+                            <i class="fas fa-trash me-1"></i> 清理缓存
+                        </button>
+                        <button class="btn btn-secondary w-100 mb-2" onclick="quickAction('restart_system')">
+                            <i class="fas fa-power-off me-1"></i> 重启系统
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let taskChart = null;
+    let systemStartTime = Date.now();
+    
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+        initCharts();
+        loadDashboardData();
+        
+        // 定期更新数据
+        setInterval(loadDashboardData, 5000);
+        setInterval(updateUptime, 1000);
+    });
+    
+    // 初始化图表
+    function initCharts() {
+        const ctx = document.getElementById('taskChart').getContext('2d');
+        taskChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: '成功任务',
+                    data: [],
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: '失败任务',
+                    data: [],
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    }
+    
+    // 加载仪表板数据
+    function loadDashboardData() {
+        // 加载系统状态
+        fetch('/api/status')
+            .then(response => response.json())
+            .then(data => {
+                updateSystemStatus(data);
+            })
+            .catch(error => {
+                console.error('加载系统状态失败:', error);
+            });
+        
+        // 模拟加载其他数据
+        loadMetrics();
+        loadRecentActivities();
+        loadTaskList();
+        updatePerformanceMetrics();
+    }
+    
+    // 更新系统状态
+    function updateSystemStatus(data) {
+        // 更新Android状态
+        const androidStatus = document.getElementById('androidStatus');
+        const androidProgress = document.getElementById('androidProgress');
+        
+        if (data.android_connected) {
+            androidStatus.className = 'status-indicator status-online';
+            androidProgress.className = 'progress-bar bg-success';
+            androidProgress.style.width = '100%';
+        } else {
+            androidStatus.className = 'status-indicator status-offline';
+            androidProgress.className = 'progress-bar bg-danger';
+            androidProgress.style.width = '0%';
+        }
+        
+        // 更新屏幕状态
+        const screenStatus = document.getElementById('screenStatus');
+        const screenProgress = document.getElementById('screenProgress');
+        
+        if (data.screen_streaming) {
+            screenStatus.className = 'status-indicator status-online';
+            screenProgress.className = 'progress-bar bg-success';
+            screenProgress.style.width = '100%';
+        } else {
+            screenStatus.className = 'status-indicator status-warning';
+            screenProgress.className = 'progress-bar bg-warning';
+            screenProgress.style.width = '50%';
+        }
+        
+        // 更新运行中任务数
+        document.getElementById('runningTasks').textContent = data.running_tasks || 0;
+    }
+    
+    // 加载指标数据
+    function loadMetrics() {
+        // 模拟数据
+        const metrics = {
+            totalTasks: Math.floor(Math.random() * 100) + 50,
+            successRate: Math.floor(Math.random() * 20) + 80,
+            runningTasks: Math.floor(Math.random() * 10),
+            taskChange: Math.floor(Math.random() * 20) + 5,
+            successChange: Math.floor(Math.random() * 10) + 2
+        };
+        
+        document.getElementById('totalTasks').textContent = metrics.totalTasks;
+        document.getElementById('successRate').textContent = metrics.successRate + '%';
+        document.getElementById('runningTasks').textContent = metrics.runningTasks;
+        document.getElementById('taskChange').textContent = `+${metrics.taskChange} 今日`;
+        document.getElementById('successChange').textContent = `+${metrics.successChange}% 较昨日`;
+    }
+    
+    // 加载最近活动
+    function loadRecentActivities() {
+        const activities = [
+            { type: 'success', title: '执行命令: 刷抖音视频', time: '2分钟前' },
+            { type: 'success', title: '发送消息: 张三', time: '5分钟前' },
+            { type: 'error', title: '抓取网页失败: example.com', time: '8分钟前' },
+            { type: 'info', title: '系统启动', time: '15分钟前' },
+            { type: 'success', title: '任务调度器启动', time: '15分钟前' }
+        ];
+        
+        const container = document.getElementById('recentActivities');
+        container.innerHTML = activities.map(activity => `
+            <div class="activity-item">
+                <div class="activity-icon ${activity.type}">
+                    <i class="fas fa-${activity.type === 'success' ? 'check' : activity.type === 'error' ? 'times' : 'info'}"></i>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-title">${activity.title}</div>
+                    <div class="activity-time">${activity.time}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // 加载任务列表
+    function loadTaskList() {
+        const tasks = [
+            { id: 1, name: '刷抖音视频', status: 'running', progress: 75 },
+            { id: 2, name: '发送微信消息', status: 'completed', progress: 100 },
+            { id: 3, name: '抓取网页数据', status: 'pending', progress: 0 },
+            { id: 4, name: '自动点赞', status: 'failed', progress: 30 }
+        ];
+        
+        const container = document.getElementById('taskList');
+        container.innerHTML = tasks.map(task => `
+            <div class="task-item ${task.status}">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${task.name}</h6>
+                        <small class="text-muted">任务ID: ${task.id}</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-${getStatusColor(task.status)}">${getStatusText(task.status)}</span>
+                        <div class="mt-1">
+                            <small class="text-muted">${task.progress}%</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="progress mt-2" style="height: 4px;">
+                    <div class="progress-bar" style="width: ${task.progress}%"></div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // 获取状态颜色
+    function getStatusColor(status) {
+        const colors = {
+            'running': 'success',
+            'completed': 'info',
+            'pending': 'warning',
+            'failed': 'danger'
+        };
+        return colors[status] || 'secondary';
+    }
+    
+    // 获取状态文本
+    function getStatusText(status) {
+        const texts = {
+            'running': '运行中',
+            'completed': '已完成',
+            'pending': '等待中',
+            'failed': '失败'
+        };
+        return texts[status] || '未知';
+    }
+    
+    // 更新性能指标
+    function updatePerformanceMetrics() {
+        // 模拟性能数据
+        const cpu = Math.floor(Math.random() * 50) + 20;
+        const memory = Math.floor(Math.random() * 40) + 30;
+        const disk = Math.floor(Math.random() * 30) + 40;
+        
+        updateProgressRing('cpuProgress', 'cpuText', cpu);
+        updateProgressRing('memoryProgress', 'memoryText', memory);
+        updateProgressRing('diskProgress', 'diskText', disk);
+    }
+    
+    // 更新进度环
+    function updateProgressRing(progressId, textId, percentage) {
+        const progress = document.getElementById(progressId);
+        const text = document.getElementById(textId);
+        
+        const circumference = 2 * Math.PI * 26;
+        const offset = circumference - (percentage / 100) * circumference;
+        
+        progress.style.strokeDasharray = circumference;
+        progress.style.strokeDashoffset = offset;
+        text.textContent = percentage + '%';
+    }
+    
+    // 更新运行时间
+    function updateUptime() {
+        const now = Date.now();
+        const uptime = Math.floor((now - systemStartTime) / 1000 / 60 / 60);
+        document.getElementById('uptime').textContent = uptime + 'h';
+    }
+    
+    // 快速操作
+    function quickAction(action) {
+        switch (action) {
+            case 'start_all':
+                showSuccess('正在启动所有服务...');
+                break;
+            case 'pause_all':
+                showSuccess('正在暂停所有任务...');
+                break;
+            case 'refresh_status':
+                loadDashboardData();
+                showSuccess('状态已刷新');
+                break;
+            case 'export_logs':
+                showSuccess('正在导出日志...');
+                break;
+            case 'clear_cache':
+                showSuccess('正在清理缓存...');
+                break;
+            case 'restart_system':
+                if (confirm('确定要重启系统吗？')) {
+                    showSuccess('正在重启系统...');
+                }
+                break;
+        }
+    }
+</script>
+{% endblock %}

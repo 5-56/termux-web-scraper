@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 羲和AI代理系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-home me-2"></i>系统概览
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-robot fa-3x text-primary mb-3"></i>
+                                <h5>AI代理</h5>
+                                <p class="text-muted">智能任务执行</p>
+                                <span class="status-indicator status-online"></span>
+                                <small>运行中</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-mobile-alt fa-3x text-success mb-3"></i>
+                                <h5>Android设备</h5>
+                                <p class="text-muted">设备控制</p>
+                                <span class="status-indicator" id="androidStatus"></span>
+                                <small id="androidStatusText">检查中...</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-tasks fa-3x text-warning mb-3"></i>
+                                <h5>任务调度</h5>
+                                <p class="text-muted">自动化任务</p>
+                                <span class="status-indicator status-online"></span>
+                                <small>运行中</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-eye fa-3x text-info mb-3"></i>
+                                <h5>屏幕识别</h5>
+                                <p class="text-muted">实时识别</p>
+                                <span class="status-indicator" id="screenStatus"></span>
+                                <small id="screenStatusText">就绪</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-terminal me-2"></i>快速命令
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="quickCommand" placeholder="输入命令，如：刷抖音视频">
+                    <button class="btn btn-primary" type="button" onclick="executeQuickCommand()">
+                        <i class="fas fa-play"></i> 执行
+                    </button>
+                </div>
+                
+                <div class="row">
+                    <div class="col-6">
+                        <button class="btn btn-outline-primary w-100 mb-2" onclick="quickCommand('刷抖音视频')">
+                            <i class="fas fa-video me-1"></i> 刷抖音
+                        </button>
+                        <button class="btn btn-outline-success w-100 mb-2" onclick="quickCommand('发微信消息:测试:你好')">
+                            <i class="fas fa-comment me-1"></i> 发消息
+                        </button>
+                        <button class="btn btn-outline-info w-100 mb-2" onclick="quickCommand('抓取网页:https://www.example.com')">
+                            <i class="fas fa-globe me-1"></i> 抓取网页
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-outline-warning w-100 mb-2" onclick="quickCommand('启动应用:微信')">
+                            <i class="fas fa-mobile-alt me-1"></i> 启动微信
+                        </button>
+                        <button class="btn btn-outline-danger w-100 mb-2" onclick="quickCommand('截图')">
+                            <i class="fas fa-camera me-1"></i> 截图
+                        </button>
+                        <button class="btn btn-outline-secondary w-100 mb-2" onclick="quickCommand('查询信息:Python')">
+                            <i class="fas fa-search me-1"></i> 查询信息
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>系统状态
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="systemStatus">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>AI代理状态</span>
+                        <span class="badge bg-success">运行中</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>Android连接</span>
+                        <span class="badge bg-warning" id="androidBadge">检查中</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>任务队列</span>
+                        <span class="badge bg-info" id="taskQueue">0</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>运行中任务</span>
+                        <span class="badge bg-primary" id="runningTasks">0</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>今日执行次数</span>
+                        <span class="badge bg-secondary" id="todayExecutions">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>最近活动
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="recentActivities">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-spinner fa-spin"></i> 加载中...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-cog me-2"></i>快速设置
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="d-grid">
+                            <a href="/ai-chat" class="btn btn-primary">
+                                <i class="fas fa-comments me-2"></i>AI对话界面
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-grid">
+                            <a href="/code-editor" class="btn btn-success">
+                                <i class="fas fa-code me-2"></i>代码编辑器
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-grid">
+                            <a href="/screen-recognition" class="btn btn-info">
+                                <i class="fas fa-eye me-2"></i>屏幕识别
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSystemStatus();
+        loadRecentActivities();
+        
+        // 定期更新状态
+        setInterval(loadSystemStatus, 5000);
+    });
+    
+    // 加载系统状态
+    function loadSystemStatus() {
+        fetch('/api/status')
+            .then(response => response.json())
+            .then(data => {
+                updateSystemStatus(data);
+            })
+            .catch(error => {
+                console.error('加载系统状态失败:', error);
+            });
+    }
+    
+    // 更新系统状态显示
+    function updateSystemStatus(data) {
+        // 更新Android状态
+        const androidBadge = document.getElementById('androidBadge');
+        const androidStatus = document.getElementById('androidStatus');
+        const androidStatusText = document.getElementById('androidStatusText');
+        
+        if (data.android_connected) {
+            androidBadge.textContent = '已连接';
+            androidBadge.className = 'badge bg-success';
+            androidStatus.className = 'status-indicator status-online';
+            androidStatusText.textContent = '已连接';
+        } else {
+            androidBadge.textContent = '未连接';
+            androidBadge.className = 'badge bg-danger';
+            androidStatus.className = 'status-indicator status-offline';
+            androidStatusText.textContent = '未连接';
+        }
+        
+        // 更新屏幕状态
+        const screenStatus = document.getElementById('screenStatus');
+        const screenStatusText = document.getElementById('screenStatusText');
+        
+        if (data.screen_streaming) {
+            screenStatus.className = 'status-indicator status-online';
+            screenStatusText.textContent = '流传输中';
+        } else {
+            screenStatus.className = 'status-indicator status-offline';
+            screenStatusText.textContent = '就绪';
+        }
+        
+        // 更新任务信息
+        document.getElementById('runningTasks').textContent = data.running_tasks || 0;
+    }
+    
+    // 加载最近活动
+    function loadRecentActivities() {
+        // 模拟数据，实际应该从API获取
+        const activities = [
+            { time: '10:30', action: '执行命令: 刷抖音视频', status: 'success' },
+            { time: '10:25', action: '发送消息: 张三', status: 'success' },
+            { time: '10:20', action: '抓取网页: example.com', status: 'success' },
+            { time: '10:15', action: '启动应用: 微信', status: 'success' },
+            { time: '10:10', action: '系统启动', status: 'info' }
+        ];
+        
+        const container = document.getElementById('recentActivities');
+        container.innerHTML = activities.map(activity => `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <span class="text-muted">${activity.time}</span>
+                    <span class="ms-2">${activity.action}</span>
+                </div>
+                <span class="badge bg-${activity.status === 'success' ? 'success' : activity.status === 'error' ? 'danger' : 'info'}">
+                    ${activity.status === 'success' ? '成功' : activity.status === 'error' ? '失败' : '信息'}
+                </span>
+            </div>
+        `).join('');
+    }
+    
+    // 执行快速命令
+    function executeQuickCommand() {
+        const command = document.getElementById('quickCommand').value.trim();
+        if (!command) {
+            showError('请输入命令');
+            return;
+        }
+        
+        quickCommand(command);
+    }
+    
+    // 快速命令
+    function quickCommand(command) {
+        document.getElementById('quickCommand').value = command;
+        
+        if (!isConnected) {
+            showError('未连接到服务器');
+            return;
+        }
+        
+        // 发送命令到服务器
+        socket.emit('ai_command', { command: command });
+        
+        // 显示执行状态
+        showSuccess(`正在执行命令: ${command}`);
+    }
+    
+    // 监听AI响应
+    socket.on('ai_response', function(data) {
+        if (data.success) {
+            showSuccess(`命令执行成功: ${data.result?.message || '完成'}`);
+        } else {
+            showError(`命令执行失败: ${data.error || '未知错误'}`);
+        }
+    });
+    
+    // 监听键盘事件
+    document.getElementById('quickCommand').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            executeQuickCommand();
+        }
+    });
+</script>
+{% endblock %}

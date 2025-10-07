@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}AI对话 - 羲和AI代理系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-comments me-2"></i>AI对话界面
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- 聊天区域 -->
+                <div id="chatArea" style="height: 500px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; background: #f8f9fa;">
+                    <div class="chat-message ai">
+                        <div class="d-flex align-items-start">
+                            <div class="me-3">
+                                <i class="fas fa-robot fa-2x text-primary"></i>
+                            </div>
+                            <div>
+                                <strong>羲和AI</strong>
+                                <p class="mb-0">你好！我是羲和AI代理系统。我可以帮你控制Android设备、执行自动化任务、抓取网页数据等。请告诉我你想要做什么？</p>
+                                <small class="text-muted">刚刚</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 输入区域 -->
+                <div class="mt-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="messageInput" placeholder="输入你的指令，如：刷抖音视频、发微信消息等..." autocomplete="off">
+                        <button class="btn btn-primary" type="button" onclick="sendMessage()">
+                            <i class="fas fa-paper-plane"></i> 发送
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 快捷指令 -->
+                <div class="mt-3">
+                    <h6>快捷指令：</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="insertCommand('刷抖音视频')">
+                            <i class="fas fa-video me-1"></i> 刷抖音
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" onclick="insertCommand('发微信消息:张三:你好')">
+                            <i class="fas fa-comment me-1"></i> 发消息
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="insertCommand('抓取网页:https://www.example.com')">
+                            <i class="fas fa-globe me-1"></i> 抓取网页
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm" onclick="insertCommand('启动应用:微信')">
+                            <i class="fas fa-mobile-alt me-1"></i> 启动微信
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="insertCommand('截图')">
+                            <i class="fas fa-camera me-1"></i> 截图
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="insertCommand('查询信息:Python编程')">
+                            <i class="fas fa-search me-1"></i> 查询信息
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>系统信息
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>连接状态</h6>
+                    <div class="d-flex align-items-center">
+                        <span class="status-indicator status-online me-2"></span>
+                        <span>AI代理已连接</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>设备状态</h6>
+                    <div class="d-flex align-items-center">
+                        <span class="status-indicator" id="deviceStatus"></span>
+                        <span id="deviceStatusText">检查中...</span>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>今日统计</h6>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="h5 mb-0 text-primary" id="todayCommands">0</div>
+                                <small class="text-muted">执行命令</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="h5 mb-0 text-success" id="successRate">0%</div>
+                                <small class="text-muted">成功率</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>使用提示
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        使用自然语言描述你想要执行的任务
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        支持Android设备控制、网页抓取、消息发送等
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        可以设置定时任务和批量操作
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        支持实时屏幕识别和元素检测
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let messageCount = 0;
+    let successCount = 0;
+    
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSystemInfo();
+        
+        // 监听键盘事件
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // 自动聚焦到输入框
+        document.getElementById('messageInput').focus();
+    });
+    
+    // 发送消息
+    function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+        
+        if (!message) {
+            return;
+        }
+        
+        // 清空输入框
+        input.value = '';
+        
+        // 添加用户消息到聊天区域
+        addMessage(message, 'user');
+        
+        // 发送到服务器
+        if (isConnected) {
+            socket.emit('ai_command', { command: message });
+            messageCount++;
+            updateStats();
+        } else {
+            addMessage('未连接到服务器，请检查网络连接', 'ai', 'error');
+        }
+    }
+    
+    // 添加消息到聊天区域
+    function addMessage(text, sender, type = 'normal') {
+        const chatArea = document.getElementById('chatArea');
+        const messageDiv = document.createElement('div');
+        
+        const time = new Date().toLocaleTimeString();
+        const icon = sender === 'user' ? 'fas fa-user' : 'fas fa-robot';
+        const iconColor = sender === 'user' ? 'text-success' : 'text-primary';
+        
+        let messageClass = `chat-message ${sender}`;
+        if (type === 'error') {
+            messageClass += ' border-danger';
+        }
+        
+        messageDiv.className = messageClass;
+        messageDiv.innerHTML = `
+            <div class="d-flex align-items-start">
+                <div class="me-3">
+                    <i class="${icon} fa-2x ${iconColor}"></i>
+                </div>
+                <div>
+                    <strong>${sender === 'user' ? '你' : '羲和AI'}</strong>
+                    <p class="mb-0">${text}</p>
+                    <small class="text-muted">${time}</small>
+                </div>
+            </div>
+        `;
+        
+        chatArea.appendChild(messageDiv);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
+    
+    // 插入命令到输入框
+    function insertCommand(command) {
+        document.getElementById('messageInput').value = command;
+        document.getElementById('messageInput').focus();
+    }
+    
+    // 加载系统信息
+    function loadSystemInfo() {
+        fetch('/api/status')
+            .then(response => response.json())
+            .then(data => {
+                updateDeviceStatus(data);
+            })
+            .catch(error => {
+                console.error('加载系统信息失败:', error);
+            });
+    }
+    
+    // 更新设备状态
+    function updateDeviceStatus(data) {
+        const deviceStatus = document.getElementById('deviceStatus');
+        const deviceStatusText = document.getElementById('deviceStatusText');
+        
+        if (data.android_connected) {
+            deviceStatus.className = 'status-indicator status-online me-2';
+            deviceStatusText.textContent = 'Android设备已连接';
+        } else {
+            deviceStatus.className = 'status-indicator status-offline me-2';
+            deviceStatusText.textContent = 'Android设备未连接';
+        }
+    }
+    
+    // 更新统计信息
+    function updateStats() {
+        document.getElementById('todayCommands').textContent = messageCount;
+        
+        if (messageCount > 0) {
+            const rate = Math.round((successCount / messageCount) * 100);
+            document.getElementById('successRate').textContent = rate + '%';
+        }
+    }
+    
+    // 监听AI响应
+    socket.on('ai_response', function(data) {
+        if (data.success) {
+            addMessage(data.result?.message || '命令执行成功', 'ai');
+            successCount++;
+        } else {
+            addMessage('执行失败: ' + (data.error || '未知错误'), 'ai', 'error');
+        }
+        updateStats();
+    });
+    
+    // 监听连接状态
+    socket.on('connect', function() {
+        addMessage('已连接到AI代理系统', 'ai');
+    });
+    
+    socket.on('disconnect', function() {
+        addMessage('与AI代理系统连接断开', 'ai', 'error');
+    });
+</script>
+{% endblock %}
