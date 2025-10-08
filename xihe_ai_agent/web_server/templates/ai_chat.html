@@ -3,281 +3,764 @@
 {% block title %}AI对话 - 羲和AI代理系统{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8">
-        <div class="card fade-in">
-            <div class="card-header">
-                <h4 class="mb-0">
-                    <i class="fas fa-comments me-2"></i>AI对话界面
-                </h4>
-            </div>
-            <div class="card-body">
-                <!-- 聊天区域 -->
-                <div id="chatArea" style="height: 500px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; background: #f8f9fa;">
-                    <div class="chat-message ai">
-                        <div class="d-flex align-items-start">
-                            <div class="me-3">
-                                <i class="fas fa-robot fa-2x text-primary"></i>
-                            </div>
-                            <div>
-                                <strong>羲和AI</strong>
-                                <p class="mb-0">你好！我是羲和AI代理系统。我可以帮你控制Android设备、执行自动化任务、抓取网页数据等。请告诉我你想要做什么？</p>
-                                <small class="text-muted">刚刚</small>
-                            </div>
-                        </div>
+<div class="container-fluid h-100">
+    <div class="row h-100">
+        <!-- 侧边栏 -->
+        <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar" id="sidebar">
+            <div class="position-sticky pt-3">
+                <!-- 侧边栏头部 -->
+                <div class="d-flex justify-content-between align-items-center px-3 mb-3">
+                    <h5 class="mb-0">羲和AI</h5>
+                    <button class="btn btn-sm btn-outline-secondary d-md-none" id="sidebar-toggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+
+                <!-- 新对话按钮 -->
+                <div class="px-3 mb-3">
+                    <button class="btn btn-primary w-100" id="new-chat-btn">
+                        <i class="fas fa-plus"></i> 新对话
+                    </button>
+                </div>
+
+                <!-- 聊天历史 -->
+                <div class="px-3 mb-3">
+                    <h6 class="text-muted mb-2">聊天历史</h6>
+                    <div id="chat-history" class="list-group list-group-flush">
+                        <!-- 聊天历史将通过JavaScript动态加载 -->
                     </div>
                 </div>
-                
-                <!-- 输入区域 -->
-                <div class="mt-3">
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="messageInput" placeholder="输入你的指令，如：刷抖音视频、发微信消息等..." autocomplete="off">
-                        <button class="btn btn-primary" type="button" onclick="sendMessage()">
-                            <i class="fas fa-paper-plane"></i> 发送
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- 快捷指令 -->
-                <div class="mt-3">
-                    <h6>快捷指令：</h6>
-                    <div class="d-flex flex-wrap gap-2">
-                        <button class="btn btn-outline-primary btn-sm" onclick="insertCommand('刷抖音视频')">
-                            <i class="fas fa-video me-1"></i> 刷抖音
-                        </button>
-                        <button class="btn btn-outline-success btn-sm" onclick="insertCommand('发微信消息:张三:你好')">
-                            <i class="fas fa-comment me-1"></i> 发消息
-                        </button>
-                        <button class="btn btn-outline-info btn-sm" onclick="insertCommand('抓取网页:https://www.example.com')">
-                            <i class="fas fa-globe me-1"></i> 抓取网页
-                        </button>
-                        <button class="btn btn-outline-warning btn-sm" onclick="insertCommand('启动应用:微信')">
-                            <i class="fas fa-mobile-alt me-1"></i> 启动微信
-                        </button>
-                        <button class="btn btn-outline-danger btn-sm" onclick="insertCommand('截图')">
-                            <i class="fas fa-camera me-1"></i> 截图
-                        </button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="insertCommand('查询信息:Python编程')">
-                            <i class="fas fa-search me-1"></i> 查询信息
-                        </button>
-                    </div>
+
+                <!-- 导航菜单 -->
+                <div class="px-3">
+                    <h6 class="text-muted mb-2">功能菜单</h6>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/ai-chat">
+                                <i class="fas fa-comments"></i> AI对话
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/">
+                                <i class="fas fa-home"></i> 主控制台
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/code-editor">
+                                <i class="fas fa-code"></i> 代码编辑器
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/screen-recognition">
+                                <i class="fas fa-eye"></i> 屏幕识别
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/dashboard">
+                                <i class="fas fa-chart-line"></i> 数据面板
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/settings">
+                                <i class="fas fa-cog"></i> 设置
+                            </a>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
+
+        <!-- 主聊天区域 -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-0 d-flex flex-column">
+            <!-- 聊天头部 -->
+            <div class="chat-header bg-white border-bottom px-4 py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0">AI智能助手</h4>
+                        <small class="text-muted">与羲和AI进行对话，执行自动化任务</small>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <span class="badge bg-success" id="connection-status">已连接</span>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-robot"></i> 模型设置
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modelConfigModal">
+                                    <i class="fas fa-cog"></i> 配置模型
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" id="current-model">
+                                    <i class="fas fa-check"></i> 当前模型: <span id="current-model-name">未配置</span>
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 聊天消息区域 -->
+            <div class="chat-messages flex-grow-1 p-4" id="chat-messages">
+                <!-- 欢迎消息 -->
+                <div class="message ai-message mb-4">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            <p>👋 您好！我是羲和AI智能助手，可以帮助您执行各种Android自动化任务。</p>
+                            <p>您可以尝试以下命令：</p>
+                            <ul>
+                                <li>📱 "刷抖音视频10个"</li>
+                                <li>💬 "给张三发消息：你好"</li>
+                                <li>🌐 "抓取网页数据"</li>
+                                <li>📸 "截取屏幕"</li>
+                            </ul>
+                        </div>
+                        <div class="message-time">刚刚</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="chat-input bg-white border-top p-4">
+                <div class="input-group">
+                    <textarea class="form-control" id="message-input" rows="2" placeholder="输入您的指令..."></textarea>
+                    <button class="btn btn-primary" type="button" id="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div class="mt-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="quick-actions">
+                            <button class="btn btn-sm btn-outline-secondary me-2" onclick="insertQuickCommand('刷抖音视频')">
+                                <i class="fas fa-video"></i> 刷视频
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary me-2" onclick="insertQuickCommand('发消息')">
+                                <i class="fas fa-comment"></i> 发消息
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary me-2" onclick="insertQuickCommand('截图')">
+                                <i class="fas fa-camera"></i> 截图
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="insertQuickCommand('抓取网页')">
+                                <i class="fas fa-globe"></i> 抓取
+                            </button>
+                        </div>
+                        <small class="text-muted">
+                            <i class="fas fa-keyboard"></i> 按 Enter 发送，Shift+Enter 换行
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
-    
-    <div class="col-md-4">
-        <div class="card fade-in">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-info-circle me-2"></i>系统信息
-                </h5>
+</div>
+
+<!-- 模型配置模态框 -->
+<div class="modal fade" id="modelConfigModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">AI模型配置</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <h6>连接状态</h6>
-                    <div class="d-flex align-items-center">
-                        <span class="status-indicator status-online me-2"></span>
-                        <span>AI代理已连接</span>
+            <div class="modal-body">
+                <form id="model-config-form">
+                    <!-- 提供商选择 -->
+                    <div class="mb-4">
+                        <label class="form-label">选择提供商</label>
+                        <select class="form-select" id="provider-select" required>
+                            <option value="">请选择提供商</option>
+                            <option value="google">Google Gemini</option>
+                            <option value="deepseek">DeepSeek</option>
+                            <option value="kimi">Kimi (月之暗面)</option>
+                            <option value="zhipu">智谱AI</option>
+                            <option value="openrouter">OpenRouter</option>
+                            <option value="openai">OpenAI</option>
+                        </select>
                     </div>
-                </div>
-                
-                <div class="mb-3">
-                    <h6>设备状态</h6>
-                    <div class="d-flex align-items-center">
-                        <span class="status-indicator" id="deviceStatus"></span>
-                        <span id="deviceStatusText">检查中...</span>
+
+                    <!-- API配置 -->
+                    <div class="mb-4">
+                        <label class="form-label">API Key</label>
+                        <input type="password" class="form-control" id="api-key" placeholder="请输入API Key">
                     </div>
-                </div>
-                
-                <div class="mb-3">
-                    <h6>今日统计</h6>
-                    <div class="row text-center">
-                        <div class="col-6">
-                            <div class="border rounded p-2">
-                                <div class="h5 mb-0 text-primary" id="todayCommands">0</div>
-                                <small class="text-muted">执行命令</small>
+
+                    <div class="mb-4">
+                        <label class="form-label">API Base URL (可选)</label>
+                        <input type="url" class="form-control" id="api-base-url" placeholder="https://api.example.com/v1">
+                    </div>
+
+                    <!-- 模型选择 -->
+                    <div class="mb-4">
+                        <label class="form-label">选择模型</label>
+                        <select class="form-select" id="model-select" disabled>
+                            <option value="">请先选择提供商</option>
+                        </select>
+                    </div>
+
+                    <!-- 高级设置 -->
+                    <div class="accordion" id="advancedSettings">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#advancedSettingsContent">
+                                    高级设置
+                                </button>
+                            </h2>
+                            <div id="advancedSettingsContent" class="accordion-collapse collapse">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label class="form-label">温度 (Temperature)</label>
+                                            <input type="range" class="form-range" id="temperature" min="0" max="2" step="0.1" value="0.7">
+                                            <div class="d-flex justify-content-between">
+                                                <small>0 (精确)</small>
+                                                <small>2 (创意)</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">最大令牌数</label>
+                                            <input type="number" class="form-control" id="max-tokens" value="2048" min="1" max="8192">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-6">
-                            <div class="border rounded p-2">
-                                <div class="h5 mb-0 text-success" id="successRate">0%</div>
-                                <small class="text-muted">成功率</small>
-                            </div>
-                        </div>
                     </div>
-                </div>
+                </form>
             </div>
-        </div>
-        
-        <div class="card fade-in">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-lightbulb me-2"></i>使用提示
-                </h5>
-            </div>
-            <div class="card-body">
-                <ul class="list-unstyled mb-0">
-                    <li class="mb-2">
-                        <i class="fas fa-check text-success me-2"></i>
-                        使用自然语言描述你想要执行的任务
-                    </li>
-                    <li class="mb-2">
-                        <i class="fas fa-check text-success me-2"></i>
-                        支持Android设备控制、网页抓取、消息发送等
-                    </li>
-                    <li class="mb-2">
-                        <i class="fas fa-check text-success me-2"></i>
-                        可以设置定时任务和批量操作
-                    </li>
-                    <li class="mb-2">
-                        <i class="fas fa-check text-success me-2"></i>
-                        支持实时屏幕识别和元素检测
-                    </li>
-                </ul>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="save-model-config">保存配置</button>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<style>
+/* 聊天界面样式 */
+.chat-messages {
+    background-color: #f8f9fa;
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
+}
+
+.message {
+    display: flex;
+    margin-bottom: 1rem;
+}
+
+.message-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #007bff;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.user-message .message-avatar {
+    background-color: #28a745;
+}
+
+.message-content {
+    flex: 1;
+}
+
+.message-bubble {
+    background-color: white;
+    padding: 12px 16px;
+    border-radius: 18px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    max-width: 80%;
+}
+
+.user-message .message-bubble {
+    background-color: #007bff;
+    color: white;
+    margin-left: auto;
+}
+
+.message-time {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 4px;
+}
+
+.user-message .message-time {
+    text-align: right;
+}
+
+/* 侧边栏样式 */
+.sidebar {
+    min-height: 100vh;
+    border-right: 1px solid #dee2e6;
+}
+
+.sidebar .nav-link {
+    color: #495057;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    margin-bottom: 0.25rem;
+}
+
+.sidebar .nav-link:hover {
+    background-color: #e9ecef;
+}
+
+.sidebar .nav-link.active {
+    background-color: #007bff;
+    color: white;
+}
+
+/* 聊天历史样式 */
+#chat-history .list-group-item {
+    border: none;
+    padding: 0.5rem 0;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    margin-bottom: 0.25rem;
+}
+
+#chat-history .list-group-item:hover {
+    background-color: #e9ecef;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -100%;
+        width: 80%;
+        z-index: 1050;
+        transition: left 0.3s ease;
+    }
+    
+    .sidebar.show {
+        left: 0;
+    }
+    
+    .chat-messages {
+        max-height: calc(100vh - 150px);
+    }
+}
+
+/* 输入框样式 */
+#message-input {
+    resize: none;
+    border: 1px solid #dee2e6;
+    border-radius: 20px;
+    padding: 12px 16px;
+}
+
+#message-input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+#send-btn {
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    margin-left: 10px;
+}
+
+/* 快速操作按钮 */
+.quick-actions .btn {
+    border-radius: 20px;
+    font-size: 0.875rem;
+}
+
+/* 打字指示器动画 */
+.typing-dots {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.typing-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #6c757d;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typing {
+    0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+    40% { transform: scale(1); opacity: 1; }
+}
+</style>
+
 <script>
-    let messageCount = 0;
-    let successCount = 0;
+// 全局变量
+let currentChatId = null;
+let chatHistory = [];
+let isConnected = false;
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    initWebSocket();
+    loadChatHistory();
+    initEventListeners();
+    loadModelConfig();
+});
+
+// 初始化事件监听器
+function initEventListeners() {
+    // 发送按钮
+    document.getElementById('send-btn').addEventListener('click', sendMessage);
     
-    // 页面加载完成后执行
-    document.addEventListener('DOMContentLoaded', function() {
-        loadSystemInfo();
-        
-        // 监听键盘事件
-        document.getElementById('messageInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-        
-        // 自动聚焦到输入框
-        document.getElementById('messageInput').focus();
+    // 输入框回车发送
+    document.getElementById('message-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
     });
     
-    // 发送消息
-    function sendMessage() {
-        const input = document.getElementById('messageInput');
-        const message = input.value.trim();
-        
-        if (!message) {
-            return;
-        }
-        
-        // 清空输入框
-        input.value = '';
-        
-        // 添加用户消息到聊天区域
-        addMessage(message, 'user');
-        
-        // 发送到服务器
-        if (isConnected) {
-            socket.emit('ai_command', { command: message });
-            messageCount++;
-            updateStats();
-        } else {
-            addMessage('未连接到服务器，请检查网络连接', 'ai', 'error');
-        }
-    }
+    // 新对话按钮
+    document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
     
-    // 添加消息到聊天区域
-    function addMessage(text, sender, type = 'normal') {
-        const chatArea = document.getElementById('chatArea');
-        const messageDiv = document.createElement('div');
-        
-        const time = new Date().toLocaleTimeString();
-        const icon = sender === 'user' ? 'fas fa-user' : 'fas fa-robot';
-        const iconColor = sender === 'user' ? 'text-success' : 'text-primary';
-        
-        let messageClass = `chat-message ${sender}`;
-        if (type === 'error') {
-            messageClass += ' border-danger';
-        }
-        
-        messageDiv.className = messageClass;
-        messageDiv.innerHTML = `
-            <div class="d-flex align-items-start">
-                <div class="me-3">
-                    <i class="${icon} fa-2x ${iconColor}"></i>
-                </div>
-                <div>
-                    <strong>${sender === 'user' ? '你' : '羲和AI'}</strong>
-                    <p class="mb-0">${text}</p>
-                    <small class="text-muted">${time}</small>
-                </div>
-            </div>
-        `;
-        
-        chatArea.appendChild(messageDiv);
-        chatArea.scrollTop = chatArea.scrollHeight;
-    }
+    // 侧边栏切换
+    document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
     
-    // 插入命令到输入框
-    function insertCommand(command) {
-        document.getElementById('messageInput').value = command;
-        document.getElementById('messageInput').focus();
-    }
+    // 模型配置
+    document.getElementById('provider-select').addEventListener('change', loadModels);
+    document.getElementById('save-model-config').addEventListener('click', saveModelConfig);
+}
+
+// 初始化WebSocket连接
+function initWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/socket.io/`;
     
-    // 加载系统信息
-    function loadSystemInfo() {
-        fetch('/api/status')
-            .then(response => response.json())
-            .then(data => {
-                updateDeviceStatus(data);
-            })
-            .catch(error => {
-                console.error('加载系统信息失败:', error);
-            });
-    }
+    const socket = io(wsUrl);
     
-    // 更新设备状态
-    function updateDeviceStatus(data) {
-        const deviceStatus = document.getElementById('deviceStatus');
-        const deviceStatusText = document.getElementById('deviceStatusText');
-        
-        if (data.android_connected) {
-            deviceStatus.className = 'status-indicator status-online me-2';
-            deviceStatusText.textContent = 'Android设备已连接';
-        } else {
-            deviceStatus.className = 'status-indicator status-offline me-2';
-            deviceStatusText.textContent = 'Android设备未连接';
-        }
-    }
-    
-    // 更新统计信息
-    function updateStats() {
-        document.getElementById('todayCommands').textContent = messageCount;
-        
-        if (messageCount > 0) {
-            const rate = Math.round((successCount / messageCount) * 100);
-            document.getElementById('successRate').textContent = rate + '%';
-        }
-    }
-    
-    // 监听AI响应
-    socket.on('ai_response', function(data) {
-        if (data.success) {
-            addMessage(data.result?.message || '命令执行成功', 'ai');
-            successCount++;
-        } else {
-            addMessage('执行失败: ' + (data.error || '未知错误'), 'ai', 'error');
-        }
-        updateStats();
-    });
-    
-    // 监听连接状态
     socket.on('connect', function() {
-        addMessage('已连接到AI代理系统', 'ai');
+        isConnected = true;
+        updateConnectionStatus(true);
+        console.log('WebSocket连接已建立');
     });
     
     socket.on('disconnect', function() {
-        addMessage('与AI代理系统连接断开', 'ai', 'error');
+        isConnected = false;
+        updateConnectionStatus(false);
+        console.log('WebSocket连接已断开');
     });
+    
+    socket.on('ai_response', function(data) {
+        displayMessage(data.message, 'ai');
+        if (data.status === 'completed') {
+            hideTypingIndicator();
+        }
+    });
+    
+    socket.on('ai_typing', function() {
+        showTypingIndicator();
+    });
+    
+    // 保存socket实例
+    window.socket = socket;
+}
+
+// 更新连接状态
+function updateConnectionStatus(connected) {
+    const statusElement = document.getElementById('connection-status');
+    if (connected) {
+        statusElement.className = 'badge bg-success';
+        statusElement.textContent = '已连接';
+    } else {
+        statusElement.className = 'badge bg-danger';
+        statusElement.textContent = '连接断开';
+    }
+}
+
+// 发送消息
+function sendMessage() {
+    const input = document.getElementById('message-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // 显示用户消息
+    displayMessage(message, 'user');
+    
+    // 清空输入框
+    input.value = '';
+    
+    // 发送到服务器
+    if (window.socket && isConnected) {
+        window.socket.emit('ai_command', {
+            command: message,
+            chat_id: currentChatId
+        });
+    } else {
+        displayMessage('连接已断开，请刷新页面重试', 'ai');
+    }
+}
+
+// 显示消息
+function displayMessage(message, type) {
+    const messagesContainer = document.getElementById('chat-messages');
+    const messageElement = document.createElement('div');
+    messageElement.className = `message ${type}-message mb-4`;
+    
+    const avatar = type === 'user' ? 'fas fa-user' : 'fas fa-robot';
+    const time = new Date().toLocaleTimeString();
+    
+    messageElement.innerHTML = `
+        <div class="message-avatar">
+            <i class="${avatar}"></i>
+        </div>
+        <div class="message-content">
+            <div class="message-bubble">
+                ${formatMessage(message)}
+            </div>
+            <div class="message-time">${time}</div>
+        </div>
+    `;
+    
+    messagesContainer.appendChild(messageElement);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// 格式化消息内容
+function formatMessage(message) {
+    // 处理换行
+    message = message.replace(/\n/g, '<br>');
+    
+    // 处理代码块
+    message = message.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    
+    // 处理行内代码
+    message = message.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    return message;
+}
+
+// 显示打字指示器
+function showTypingIndicator() {
+    const messagesContainer = document.getElementById('chat-messages');
+    let indicator = document.getElementById('typing-indicator');
+    
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'typing-indicator';
+        indicator.className = 'message ai-message mb-4';
+        indicator.innerHTML = `
+            <div class="message-avatar">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="message-content">
+                <div class="message-bubble">
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        `;
+        messagesContainer.appendChild(indicator);
+    }
+    
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// 隐藏打字指示器
+function hideTypingIndicator() {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+// 开始新对话
+function startNewChat() {
+    currentChatId = 'chat_' + Date.now();
+    document.getElementById('chat-messages').innerHTML = `
+        <div class="message ai-message mb-4">
+            <div class="message-avatar">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="message-content">
+                <div class="message-bubble">
+                    <p>👋 新对话已开始！有什么可以帮助您的吗？</p>
+                </div>
+                <div class="message-time">刚刚</div>
+            </div>
+        </div>
+    `;
+}
+
+// 插入快速命令
+function insertQuickCommand(command) {
+    const input = document.getElementById('message-input');
+    input.value = command;
+    input.focus();
+}
+
+// 切换侧边栏
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('show');
+}
+
+// 加载聊天历史
+function loadChatHistory() {
+    // 从localStorage加载聊天历史
+    const saved = localStorage.getItem('chatHistory');
+    if (saved) {
+        chatHistory = JSON.parse(saved);
+        renderChatHistory();
+    }
+}
+
+// 渲染聊天历史
+function renderChatHistory() {
+    const container = document.getElementById('chat-history');
+    container.innerHTML = '';
+    
+    chatHistory.forEach(chat => {
+        const item = document.createElement('a');
+        item.className = 'list-group-item list-group-item-action';
+        item.innerHTML = `
+            <div class="d-flex w-100 justify-content-between">
+                <h6 class="mb-1">${chat.title}</h6>
+                <small>${new Date(chat.timestamp).toLocaleDateString()}</small>
+            </div>
+            <p class="mb-1 text-muted">${chat.preview}</p>
+        `;
+        item.addEventListener('click', () => loadChat(chat.id));
+        container.appendChild(item);
+    });
+}
+
+// 加载聊天
+function loadChat(chatId) {
+    const chat = chatHistory.find(c => c.id === chatId);
+    if (chat) {
+        currentChatId = chatId;
+        // 加载聊天内容
+        document.getElementById('chat-messages').innerHTML = chat.messages;
+    }
+}
+
+// 加载模型配置
+function loadModelConfig() {
+    const saved = localStorage.getItem('modelConfig');
+    if (saved) {
+        const config = JSON.parse(saved);
+        document.getElementById('provider-select').value = config.provider || '';
+        document.getElementById('api-key').value = config.apiKey || '';
+        document.getElementById('api-base-url').value = config.apiBaseUrl || '';
+        document.getElementById('model-select').value = config.model || '';
+        document.getElementById('temperature').value = config.temperature || 0.7;
+        document.getElementById('max-tokens').value = config.maxTokens || 2048;
+        
+        if (config.provider) {
+            loadModels();
+            document.getElementById('current-model-name').textContent = config.model || '未选择';
+        }
+    }
+}
+
+// 加载模型列表
+function loadModels() {
+    const provider = document.getElementById('provider-select').value;
+    const modelSelect = document.getElementById('model-select');
+    
+    if (!provider) {
+        modelSelect.disabled = true;
+        modelSelect.innerHTML = '<option value="">请先选择提供商</option>';
+        return;
+    }
+    
+    modelSelect.disabled = false;
+    
+    // 根据提供商加载模型列表
+    const models = {
+        'google': [
+            { value: 'gemini-pro', text: 'Gemini Pro' },
+            { value: 'gemini-pro-vision', text: 'Gemini Pro Vision' }
+        ],
+        'deepseek': [
+            { value: 'deepseek-chat', text: 'DeepSeek Chat' },
+            { value: 'deepseek-coder', text: 'DeepSeek Coder' }
+        ],
+        'kimi': [
+            { value: 'moonshot-v1-8k', text: 'Moonshot v1 8K' },
+            { value: 'moonshot-v1-32k', text: 'Moonshot v1 32K' },
+            { value: 'moonshot-v1-128k', text: 'Moonshot v1 128K' }
+        ],
+        'zhipu': [
+            { value: 'glm-4', text: 'GLM-4' },
+            { value: 'glm-4v', text: 'GLM-4V' },
+            { value: 'glm-3-turbo', text: 'GLM-3 Turbo' }
+        ],
+        'openrouter': [
+            { value: 'openai/gpt-4', text: 'GPT-4' },
+            { value: 'openai/gpt-3.5-turbo', text: 'GPT-3.5 Turbo' },
+            { value: 'anthropic/claude-3-sonnet', text: 'Claude 3 Sonnet' }
+        ],
+        'openai': [
+            { value: 'gpt-4', text: 'GPT-4' },
+            { value: 'gpt-3.5-turbo', text: 'GPT-3.5 Turbo' },
+            { value: 'gpt-4-turbo', text: 'GPT-4 Turbo' }
+        ]
+    };
+    
+    modelSelect.innerHTML = '<option value="">请选择模型</option>';
+    models[provider].forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.value;
+        option.textContent = model.text;
+        modelSelect.appendChild(option);
+    });
+}
+
+// 保存模型配置
+function saveModelConfig() {
+    const config = {
+        provider: document.getElementById('provider-select').value,
+        apiKey: document.getElementById('api-key').value,
+        apiBaseUrl: document.getElementById('api-base-url').value,
+        model: document.getElementById('model-select').value,
+        temperature: parseFloat(document.getElementById('temperature').value),
+        maxTokens: parseInt(document.getElementById('max-tokens').value)
+    };
+    
+    if (!config.provider || !config.apiKey || !config.model) {
+        alert('请填写完整的配置信息');
+        return;
+    }
+    
+    // 保存到localStorage
+    localStorage.setItem('modelConfig', JSON.stringify(config));
+    
+    // 更新当前模型显示
+    document.getElementById('current-model-name').textContent = config.model;
+    
+    // 关闭模态框
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modelConfigModal'));
+    modal.hide();
+    
+    // 发送配置到服务器
+    if (window.socket && isConnected) {
+        window.socket.emit('update_model_config', config);
+    }
+    
+    alert('模型配置已保存');
+}
 </script>
 {% endblock %}

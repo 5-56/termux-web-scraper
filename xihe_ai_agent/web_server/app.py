@@ -8,6 +8,7 @@ import json
 import logging
 import base64
 import io
+import requests
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
@@ -50,6 +51,72 @@ class XiheWebServer:
         # 连接状态
         self.connected_clients = set()
         self.is_screen_streaming = False
+        
+        # 模型配置
+        self.model_config = {
+            "provider": None,
+            "api_key": None,
+            "api_base_url": None,
+            "model": None,
+            "temperature": 0.7,
+            "max_tokens": 2048
+        }
+        
+        # 模型提供商配置
+        self.model_providers = {
+            "google": {
+                "name": "Google Gemini",
+                "base_url": "https://generativelanguage.googleapis.com/v1beta",
+                "models": [
+                    {"value": "gemini-pro", "text": "Gemini Pro"},
+                    {"value": "gemini-pro-vision", "text": "Gemini Pro Vision"}
+                ]
+            },
+            "deepseek": {
+                "name": "DeepSeek",
+                "base_url": "https://api.deepseek.com/v1",
+                "models": [
+                    {"value": "deepseek-chat", "text": "DeepSeek Chat"},
+                    {"value": "deepseek-coder", "text": "DeepSeek Coder"}
+                ]
+            },
+            "kimi": {
+                "name": "Kimi (月之暗面)",
+                "base_url": "https://api.moonshot.cn/v1",
+                "models": [
+                    {"value": "moonshot-v1-8k", "text": "Moonshot v1 8K"},
+                    {"value": "moonshot-v1-32k", "text": "Moonshot v1 32K"},
+                    {"value": "moonshot-v1-128k", "text": "Moonshot v1 128K"}
+                ]
+            },
+            "zhipu": {
+                "name": "智谱AI",
+                "base_url": "https://open.bigmodel.cn/api/paas/v4",
+                "models": [
+                    {"value": "glm-4", "text": "GLM-4"},
+                    {"value": "glm-4v", "text": "GLM-4V"},
+                    {"value": "glm-3-turbo", "text": "GLM-3 Turbo"}
+                ]
+            },
+            "openrouter": {
+                "name": "OpenRouter",
+                "base_url": "https://openrouter.ai/api/v1",
+                "models": [
+                    {"value": "openai/gpt-4", "text": "GPT-4"},
+                    {"value": "openai/gpt-3.5-turbo", "text": "GPT-3.5 Turbo"},
+                    {"value": "anthropic/claude-3-sonnet", "text": "Claude 3 Sonnet"}
+                ]
+            },
+            "openai": {
+                "name": "OpenAI",
+                "base_url": "https://api.openai.com/v1",
+                "models": [
+                    {"value": "gpt-4", "text": "GPT-4"},
+                    {"value": "gpt-3.5-turbo", "text": "GPT-3.5 Turbo"},
+                    {"value": "gpt-4-turbo", "text": "GPT-4 Turbo"}
+                ]
+            }
+        }
         
         # 设置路由和事件处理器
         self._setup_routes()
@@ -158,6 +225,66 @@ class XiheWebServer:
                     return jsonify({'success': True, 'scripts': []})
             except Exception as e:
                 return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/model/providers', methods=['GET'])
+        def get_model_providers():
+            """获取模型提供商列表"""
+            return jsonify(self.model_providers)
+        
+        @self.app.route('/api/model/config', methods=['GET'])
+        def get_model_config():
+            """获取当前模型配置"""
+            return jsonify(self.model_config)
+        
+        @self.app.route('/api/model/config', methods=['POST'])
+        def update_model_config():
+            """更新模型配置"""
+            try:
+                data = request.get_json()
+                
+                # 验证配置
+                if not data.get('provider') or not data.get('api_key') or not data.get('model'):
+                    return jsonify({"success": False, "error": "缺少必要配置项"})
+                
+                # 更新配置
+                self.model_config.update({
+                    "provider": data.get('provider'),
+                    "api_key": data.get('api_key'),
+                    "api_base_url": data.get('api_base_url'),
+                    "model": data.get('model'),
+                    "temperature": float(data.get('temperature', 0.7)),
+                    "max_tokens": int(data.get('max_tokens', 2048))
+                })
+                
+                # 保存到文件
+                self._save_model_config()
+                
+                return jsonify({"success": True, "message": "模型配置已更新"})
+                
+            except Exception as e:
+                self.logger.error(f"更新模型配置失败: {e}")
+                return jsonify({"success": False, "error": str(e)})
+        
+        @self.app.route('/api/model/test', methods=['POST'])
+        def test_model_connection():
+            """测试模型连接"""
+            try:
+                data = request.get_json()
+                provider = data.get('provider')
+                api_key = data.get('api_key')
+                model = data.get('model')
+                api_base_url = data.get('api_base_url')
+                
+                if not all([provider, api_key, model]):
+                    return jsonify({"success": False, "error": "缺少必要参数"})
+                
+                # 测试连接
+                result = self._test_model_connection(provider, api_key, model, api_base_url)
+                return jsonify(result)
+                
+            except Exception as e:
+                self.logger.error(f"测试模型连接失败: {e}")
+                return jsonify({"success": False, "error": str(e)})
     
     def _setup_socket_events(self):
         """设置Socket事件处理器"""
@@ -243,6 +370,34 @@ class XiheWebServer:
                 emit('swipe_result', {'success': result})
             except Exception as e:
                 emit('swipe_result', {'error': str(e)})
+        
+        @self.socketio.on('update_model_config')
+        def handle_update_model_config(data):
+            """处理模型配置更新"""
+            try:
+                # 验证配置
+                if not data.get('provider') or not data.get('api_key') or not data.get('model'):
+                    emit('model_config_result', {'success': False, 'error': '缺少必要配置项'})
+                    return
+                
+                # 更新配置
+                self.model_config.update({
+                    "provider": data.get('provider'),
+                    "api_key": data.get('api_key'),
+                    "api_base_url": data.get('api_base_url'),
+                    "model": data.get('model'),
+                    "temperature": float(data.get('temperature', 0.7)),
+                    "max_tokens": int(data.get('max_tokens', 2048))
+                })
+                
+                # 保存到文件
+                self._save_model_config()
+                
+                emit('model_config_result', {'success': True, 'message': '模型配置已更新'})
+                
+            except Exception as e:
+                self.logger.error(f"更新模型配置失败: {e}")
+                emit('model_config_result', {'success': False, 'error': str(e)})
     
     async def _execute_command(self, command: str) -> Dict[str, Any]:
         """执行AI命令"""
@@ -393,8 +548,108 @@ class XiheWebServer:
             self.android_controller = self.ai_agent.android_controller
             self.screen_recognition = ScreenRecognition(self.android_controller)
     
+    def _save_model_config(self):
+        """保存模型配置到文件"""
+        try:
+            config_path = Path("config/model_config.json")
+            config_path.parent.mkdir(exist_ok=True)
+            config_path.write_text(json.dumps(self.model_config, indent=2, ensure_ascii=False), encoding='utf-8')
+            self.logger.info("模型配置已保存")
+        except Exception as e:
+            self.logger.error(f"保存模型配置失败: {e}")
+    
+    def _load_model_config(self):
+        """从文件加载模型配置"""
+        try:
+            config_path = Path("config/model_config.json")
+            if config_path.exists():
+                config_data = json.loads(config_path.read_text(encoding='utf-8'))
+                self.model_config.update(config_data)
+                self.logger.info("模型配置已加载")
+        except Exception as e:
+            self.logger.error(f"加载模型配置失败: {e}")
+    
+    def _test_model_connection(self, provider, api_key, model, api_base_url=None):
+        """测试模型连接"""
+        try:
+            # 根据提供商构建请求
+            if provider not in self.model_providers:
+                return {"success": False, "error": "不支持的提供商"}
+            
+            provider_config = self.model_providers[provider]
+            base_url = api_base_url or provider_config["base_url"]
+            
+            # 构建测试请求
+            if provider == "google":
+                url = f"{base_url}/models/{model}:generateContent"
+                headers = {"Authorization": f"Bearer {api_key}"}
+                data = {
+                    "contents": [{"parts": [{"text": "Hello"}]}],
+                    "generationConfig": {"maxOutputTokens": 10}
+                }
+            elif provider == "deepseek":
+                url = f"{base_url}/chat/completions"
+                headers = {"Authorization": f"Bearer {api_key}"}
+                data = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": "Hello"}],
+                    "max_tokens": 10
+                }
+            elif provider == "kimi":
+                url = f"{base_url}/chat/completions"
+                headers = {"Authorization": f"Bearer {api_key}"}
+                data = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": "Hello"}],
+                    "max_tokens": 10
+                }
+            elif provider == "zhipu":
+                url = f"{base_url}/chat/completions"
+                headers = {"Authorization": f"Bearer {api_key}"}
+                data = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": "Hello"}],
+                    "max_tokens": 10
+                }
+            elif provider == "openrouter":
+                url = f"{base_url}/chat/completions"
+                headers = {"Authorization": f"Bearer {api_key}"}
+                data = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": "Hello"}],
+                    "max_tokens": 10
+                }
+            elif provider == "openai":
+                url = f"{base_url}/chat/completions"
+                headers = {"Authorization": f"Bearer {api_key}"}
+                data = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": "Hello"}],
+                    "max_tokens": 10
+                }
+            else:
+                return {"success": False, "error": "不支持的提供商"}
+            
+            # 发送测试请求
+            response = requests.post(url, headers=headers, json=data, timeout=10)
+            
+            if response.status_code == 200:
+                return {"success": True, "message": "连接测试成功"}
+            else:
+                return {"success": False, "error": f"连接失败: {response.status_code} - {response.text}"}
+                
+        except requests.exceptions.Timeout:
+            return {"success": False, "error": "连接超时"}
+        except requests.exceptions.ConnectionError:
+            return {"success": False, "error": "连接错误"}
+        except Exception as e:
+            return {"success": False, "error": f"测试失败: {str(e)}"}
+    
     def run(self, host='0.0.0.0', port=5000, debug=False):
         """运行Web服务器"""
+        # 加载模型配置
+        self._load_model_config()
+        
         self.logger.info(f"启动Web服务器: http://{host}:{port}")
         self.socketio.run(self.app, host=host, port=port, debug=debug)
 
