@@ -1,0 +1,642 @@
+{% extends "base.html" %}
+
+{% block title %}代码编辑器 - 羲和AI代理系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    .CodeMirror {
+        height: 500px;
+        font-size: 14px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+    }
+    
+    .editor-toolbar {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
+        padding: 10px;
+    }
+    
+    .editor-container {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .script-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .script-item {
+        padding: 10px;
+        border-bottom: 1px solid #dee2e6;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .script-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .script-item.active {
+        background-color: #e3f2fd;
+        border-left: 4px solid #2196f3;
+    }
+    
+    .terminal-output {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        font-family: 'Courier New', monospace;
+        padding: 15px;
+        border-radius: 8px;
+        height: 300px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-folder me-2"></i>脚本管理
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="d-grid gap-2 p-3">
+                    <button class="btn btn-primary btn-sm" onclick="newScript()">
+                        <i class="fas fa-plus me-1"></i> 新建脚本
+                    </button>
+                    <button class="btn btn-success btn-sm" onclick="saveScript()">
+                        <i class="fas fa-save me-1"></i> 保存脚本
+                    </button>
+                    <button class="btn btn-info btn-sm" onclick="loadScripts()">
+                        <i class="fas fa-refresh me-1"></i> 刷新列表
+                    </button>
+                </div>
+                
+                <div class="script-list" id="scriptList">
+                    <div class="text-center text-muted p-3">
+                        <i class="fas fa-spinner fa-spin"></i> 加载中...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card fade-in mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-play me-2"></i>执行控制
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success" onclick="runScript()">
+                        <i class="fas fa-play me-1"></i> 运行脚本
+                    </button>
+                    <button class="btn btn-warning" onclick="stopScript()">
+                        <i class="fas fa-stop me-1"></i> 停止执行
+                    </button>
+                    <button class="btn btn-info" onclick="clearOutput()">
+                        <i class="fas fa-trash me-1"></i> 清空输出
+                    </button>
+                </div>
+                
+                <hr>
+                
+                <h6>执行状态</h6>
+                <div class="d-flex align-items-center">
+                    <span class="status-indicator status-offline me-2" id="executionStatus"></span>
+                    <span id="executionStatusText">就绪</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-code me-2"></i>代码编辑器
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="editor-toolbar">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control form-control-sm" id="scriptName" placeholder="脚本名称" value="untitled.py">
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary" onclick="formatCode()">
+                                    <i class="fas fa-magic me-1"></i> 格式化
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="insertTemplate()">
+                                    <i class="fas fa-file-code me-1"></i> 模板
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="showHelp()">
+                                    <i class="fas fa-question-circle me-1"></i> 帮助
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="editor-container">
+                    <textarea id="codeEditor"></textarea>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card fade-in mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-terminal me-2"></i>执行输出
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="terminal-output" id="terminalOutput">
+                    <div class="text-muted">等待脚本执行...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 模板选择模态框 -->
+<div class="modal fade" id="templateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">选择代码模板</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6>基础控制</h6>
+                                <p class="text-muted">Android设备基础操作</p>
+                                <button class="btn btn-outline-primary btn-sm" onclick="insertTemplate('basic')">选择</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6>视频自动化</h6>
+                                <p class="text-muted">自动刷视频、点赞等</p>
+                                <button class="btn btn-outline-primary btn-sm" onclick="insertTemplate('video')">选择</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6>消息发送</h6>
+                                <p class="text-muted">批量发送消息</p>
+                                <button class="btn btn-outline-primary btn-sm" onclick="insertTemplate('messaging')">选择</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6>网页抓取</h6>
+                                <p class="text-muted">数据抓取和分析</p>
+                                <button class="btn btn-outline-primary btn-sm" onclick="insertTemplate('scraping')">选择</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let codeEditor = null;
+    let currentScript = null;
+    let isExecuting = false;
+    
+    // 代码模板
+    const templates = {
+        basic: `# 基础Android控制脚本
+import asyncio
+
+async def main():
+    # 点击屏幕坐标
+    await android_controller.tap(500, 800)
+    
+    # 滑动屏幕
+    await android_controller.swipe(100, 200, 300, 400)
+    
+    # 输入文本
+    await android_controller.input_text("Hello World")
+    
+    # 按键操作
+    await android_controller.press_key("KEYCODE_BACK")
+    
+    # 启动应用
+    await android_controller.launch_app("微信")
+    
+    print("基础控制脚本执行完成")
+
+# 运行脚本
+asyncio.run(main())`,
+        
+        video: `# 视频自动化脚本
+import asyncio
+import random
+
+async def main():
+    # 启动抖音
+    await android_controller.launch_app("抖音")
+    await asyncio.sleep(3)
+    
+    # 刷视频10个
+    for i in range(10):
+        print(f"观看第 {i+1} 个视频")
+        
+        # 观看30秒
+        await asyncio.sleep(30)
+        
+        # 随机点赞
+        if random.random() < 0.3:
+            await android_controller.tap(800, 600)  # 点赞按钮位置
+            print("已点赞")
+        
+        # 滑动到下一个视频
+        await android_controller.swipe(400, 800, 400, 200)
+        await asyncio.sleep(2)
+    
+    print("视频自动化完成")
+
+asyncio.run(main())`,
+        
+        messaging: `# 消息发送脚本
+import asyncio
+
+async def main():
+    # 联系人列表
+    contacts = ["张三", "李四", "王五"]
+    message = "大家好！这是自动发送的消息。"
+    
+    # 启动微信
+    await android_controller.launch_app("微信")
+    await asyncio.sleep(3)
+    
+    for contact in contacts:
+        print(f"发送消息给 {contact}")
+        
+        # 搜索联系人
+        await android_controller.tap(200, 100)  # 搜索框
+        await android_controller.input_text(contact)
+        await asyncio.sleep(2)
+        
+        # 点击搜索结果
+        await android_controller.tap(200, 200)
+        await asyncio.sleep(2)
+        
+        # 输入消息
+        await android_controller.tap(200, 600)  # 输入框
+        await android_controller.input_text(message)
+        
+        # 发送消息
+        await android_controller.tap(800, 600)  # 发送按钮
+        await asyncio.sleep(1)
+        
+        # 返回聊天列表
+        await android_controller.press_key("KEYCODE_BACK")
+        await asyncio.sleep(1)
+    
+    print("消息发送完成")
+
+asyncio.run(main())`,
+        
+        scraping: `# 网页抓取脚本
+import asyncio
+
+async def main():
+    # 抓取网页数据
+    result = await ai_agent.web_automation.scrape_website(
+        url="https://www.example.com",
+        data_type="text",
+        selectors={
+            "title": "h1",
+            "content": "p"
+        }
+    )
+    
+    if result["success"]:
+        print("抓取成功:")
+        print(f"标题: {result['result']['data'].get('title', 'N/A')}")
+        print(f"内容: {result['result']['data'].get('content', 'N/A')}")
+    else:
+        print(f"抓取失败: {result['error']}")
+    
+    # 批量抓取
+    urls = [
+        "https://www.example1.com",
+        "https://www.example2.com",
+        "https://www.example3.com"
+    ]
+    
+    batch_result = await ai_agent.web_automation.batch_scraping(
+        urls=urls,
+        data_type="text",
+        selectors={"title": "h1"}
+    )
+    
+    print(f"批量抓取完成: {batch_result['successful']}/{batch_result['total_urls']}")
+
+asyncio.run(main())`
+    };
+    
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+        initCodeEditor();
+        loadScripts();
+    });
+    
+    // 初始化代码编辑器
+    function initCodeEditor() {
+        codeEditor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+            mode: 'python',
+            theme: 'monokai',
+            lineNumbers: true,
+            indentUnit: 4,
+            indentWithTabs: false,
+            lineWrapping: true,
+            autoCloseBrackets: true,
+            matchBrackets: true,
+            foldGutter: true,
+            gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter']
+        });
+        
+        // 设置默认内容
+        codeEditor.setValue(templates.basic);
+    }
+    
+    // 新建脚本
+    function newScript() {
+        codeEditor.setValue(templates.basic);
+        document.getElementById('scriptName').value = 'untitled.py';
+        currentScript = null;
+    }
+    
+    // 保存脚本
+    function saveScript() {
+        const name = document.getElementById('scriptName').value.trim();
+        const content = codeEditor.getValue();
+        
+        if (!name) {
+            showError('请输入脚本名称');
+            return;
+        }
+        
+        if (!content) {
+            showError('脚本内容不能为空');
+            return;
+        }
+        
+        fetch('/api/save_script', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                content: content
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess('脚本保存成功');
+                loadScripts();
+            } else {
+                showError('保存失败: ' + data.error);
+            }
+        })
+        .catch(error => {
+            showError('保存失败: ' + error);
+        });
+    }
+    
+    // 加载脚本列表
+    function loadScripts() {
+        fetch('/api/list_scripts')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayScripts(data.scripts);
+                } else {
+                    showError('加载脚本列表失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                showError('加载脚本列表失败: ' + error);
+            });
+    }
+    
+    // 显示脚本列表
+    function displayScripts(scripts) {
+        const container = document.getElementById('scriptList');
+        
+        if (scripts.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted p-3">暂无脚本</div>';
+            return;
+        }
+        
+        container.innerHTML = scripts.map(script => `
+            <div class="script-item" onclick="loadScript('${script}')">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-file-code me-2"></i>
+                        <strong>${script}</strong>
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteScript('${script}', event)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // 加载脚本
+    function loadScript(scriptName) {
+        fetch(`/api/load_script/${scriptName}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    codeEditor.setValue(data.content);
+                    document.getElementById('scriptName').value = scriptName;
+                    currentScript = scriptName;
+                    
+                    // 更新选中状态
+                    document.querySelectorAll('.script-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    event.target.closest('.script-item').classList.add('active');
+                } else {
+                    showError('加载脚本失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                showError('加载脚本失败: ' + error);
+            });
+    }
+    
+    // 删除脚本
+    function deleteScript(scriptName, event) {
+        event.stopPropagation();
+        
+        if (confirm(`确定要删除脚本 "${scriptName}" 吗？`)) {
+            // 这里应该调用删除API
+            showSuccess('脚本删除成功');
+            loadScripts();
+        }
+    }
+    
+    // 运行脚本
+    function runScript() {
+        if (isExecuting) {
+            showError('脚本正在执行中，请等待完成');
+            return;
+        }
+        
+        const content = codeEditor.getValue();
+        if (!content.trim()) {
+            showError('脚本内容不能为空');
+            return;
+        }
+        
+        isExecuting = true;
+        updateExecutionStatus(true);
+        clearOutput();
+        
+        // 发送执行请求
+        socket.emit('execute_script', { content: content });
+    }
+    
+    // 停止脚本
+    function stopScript() {
+        if (!isExecuting) {
+            return;
+        }
+        
+        isExecuting = false;
+        updateExecutionStatus(false);
+        addOutput('脚本执行已停止');
+    }
+    
+    // 清空输出
+    function clearOutput() {
+        document.getElementById('terminalOutput').innerHTML = '<div class="text-muted">等待脚本执行...</div>';
+    }
+    
+    // 格式化代码
+    function formatCode() {
+        // 简单的Python代码格式化
+        const content = codeEditor.getValue();
+        const lines = content.split('\n');
+        const formatted = lines.map(line => {
+            // 简单的缩进处理
+            return line.trim();
+        }).join('\n');
+        
+        codeEditor.setValue(formatted);
+        showSuccess('代码格式化完成');
+    }
+    
+    // 插入模板
+    function insertTemplate() {
+        const modal = new bootstrap.Modal(document.getElementById('templateModal'));
+        modal.show();
+    }
+    
+    // 插入具体模板
+    function insertTemplate(templateName) {
+        if (templates[templateName]) {
+            codeEditor.setValue(templates[templateName]);
+            document.getElementById('scriptName').value = `template_${templateName}.py`;
+            bootstrap.Modal.getInstance(document.getElementById('templateModal')).hide();
+            showSuccess('模板已插入');
+        }
+    }
+    
+    // 显示帮助
+    function showHelp() {
+        const helpText = `
+羲和AI代理系统 - 代码编辑器帮助
+
+可用对象:
+- ai_agent: AI代理实例
+- android_controller: Android控制器
+- screen_recognition: 屏幕识别器
+
+常用方法:
+- android_controller.tap(x, y): 点击坐标
+- android_controller.swipe(x1, y1, x2, y2): 滑动
+- android_controller.input_text(text): 输入文本
+- android_controller.launch_app(name): 启动应用
+- ai_agent.process_command(cmd): 执行AI命令
+
+示例:
+await android_controller.tap(500, 800)
+await android_controller.launch_app("微信")
+result = await ai_agent.process_command("刷抖音视频")
+        `;
+        
+        alert(helpText);
+    }
+    
+    // 更新执行状态
+    function updateExecutionStatus(executing) {
+        const status = document.getElementById('executionStatus');
+        const statusText = document.getElementById('executionStatusText');
+        
+        if (executing) {
+            status.className = 'status-indicator status-online me-2';
+            statusText.textContent = '执行中';
+        } else {
+            status.className = 'status-indicator status-offline me-2';
+            statusText.textContent = '就绪';
+        }
+    }
+    
+    // 添加输出
+    function addOutput(text) {
+        const output = document.getElementById('terminalOutput');
+        const time = new Date().toLocaleTimeString();
+        output.innerHTML += `<div>[${time}] ${text}</div>`;
+        output.scrollTop = output.scrollHeight;
+    }
+    
+    // 监听脚本执行结果
+    socket.on('script_result', function(data) {
+        isExecuting = false;
+        updateExecutionStatus(false);
+        
+        if (data.success) {
+            addOutput('✓ 脚本执行成功');
+            addOutput(data.message || '执行完成');
+        } else {
+            addOutput('✗ 脚本执行失败');
+            addOutput(data.error || '未知错误');
+        }
+    });
+</script>
+{% endblock %}

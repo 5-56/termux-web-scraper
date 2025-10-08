@@ -1,0 +1,94 @@
+{
+  "android": {
+    "adb_path": "adb",
+    "device_id": "",
+    "screen_width": 1080,
+    "screen_height": 2340,
+    "tap_delay": 0.1,
+    "swipe_duration": 300,
+    "screenshot_quality": 80
+  },
+  "ai": {
+    "api_key": "",
+    "api_url": "https://api.openai.com/v1/chat/completions",
+    "model": "gpt-3.5-turbo",
+    "max_tokens": 1000,
+    "temperature": 0.7,
+    "timeout": 30
+  },
+  "scheduler": {
+    "max_concurrent_tasks": 5,
+    "task_timeout": 300,
+    "cleanup_interval": 3600,
+    "auto_cleanup_completed": false
+  },
+  "web_scraping": {
+    "headless": false,
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "page_load_timeout": 30,
+    "implicit_wait": 10,
+    "screenshot_on_error": true,
+    "retry_count": 3
+  },
+  "ui_automation": {
+    "video_watch_duration": 30,
+    "scroll_interval": 5,
+    "like_probability": 0.1,
+    "comment_probability": 0.05,
+    "share_probability": 0.02,
+    "random_delay_min": 1.0,
+    "random_delay_max": 3.0
+  },
+  "messaging": {
+    "platforms": ["wechat", "qq", "sms"],
+    "default_platform": "wechat",
+    "send_delay_min": 5,
+    "send_delay_max": 15,
+    "auto_reply_enabled": false,
+    "reply_rules": []
+  },
+  "notification": {
+    "enabled": true,
+    "telegram_bot_token": "",
+    "telegram_chat_id": "",
+    "email_smtp_server": "",
+    "email_smtp_port": 587,
+    "email_username": "",
+    "email_password": "",
+    "email_to": ""
+  },
+  "logging": {
+    "level": "INFO",
+    "file_path": "logs/xihe.log",
+    "max_file_size": 10485760,
+    "backup_count": 5,
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  },
+  "task_templates": {
+    "刷抖音视频": {
+      "type": "video_watching",
+      "platform": "douyin",
+      "duration": 300,
+      "like_probability": 0.1,
+      "comment_probability": 0.05
+    },
+    "发送微信消息": {
+      "type": "messaging",
+      "platform": "wechat",
+      "recipient": "",
+      "content": ""
+    },
+    "网页抓取": {
+      "type": "web_scraping",
+      "url": "",
+      "data_type": "text",
+      "headless": false
+    },
+    "自动点赞": {
+      "type": "ui_automation",
+      "app_name": "抖音",
+      "action": "auto_like",
+      "count": 10
+    }
+  }
+}

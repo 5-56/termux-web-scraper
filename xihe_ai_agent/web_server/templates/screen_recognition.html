@@ -1,0 +1,654 @@
+{% extends "base.html" %}
+
+{% block title %}屏幕识别 - 羲和AI代理系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    .screen-container {
+        position: relative;
+        border: 2px solid #dee2e6;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #000;
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .screen-image {
+        max-width: 100%;
+        max-height: 600px;
+        display: block;
+    }
+    
+    .screen-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+    
+    .element-highlight {
+        position: absolute;
+        border: 2px solid #00ff00;
+        background: rgba(0, 255, 0, 0.1);
+        pointer-events: all;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+    
+    .element-highlight:hover {
+        background: rgba(0, 255, 0, 0.2);
+        border-color: #00cc00;
+    }
+    
+    .element-highlight.selected {
+        border-color: #ff0000;
+        background: rgba(255, 0, 0, 0.1);
+    }
+    
+    .element-info {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 1000;
+    }
+    
+    .control-panel {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+    }
+    
+    .element-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .element-item {
+        padding: 8px 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .element-item:hover {
+        background-color: #e9ecef;
+        border-color: #adb5bd;
+    }
+    
+    .element-item.selected {
+        background-color: #e3f2fd;
+        border-color: #2196f3;
+    }
+    
+    .ocr-text {
+        background: rgba(255, 255, 0, 0.2);
+        border: 1px solid #ffc107;
+        border-radius: 4px;
+        padding: 2px 4px;
+        margin: 2px;
+        display: inline-block;
+        font-size: 12px;
+    }
+    
+    .recording-indicator {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #dc3545;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        z-index: 1000;
+        display: none;
+    }
+    
+    .recording-indicator.active {
+        display: block;
+        animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-eye me-2"></i>实时屏幕识别
+                </h4>
+            </div>
+            <div class="card-body p-0">
+                <div class="screen-container" id="screenContainer">
+                    <div class="text-center text-white">
+                        <i class="fas fa-mobile-alt fa-3x mb-3"></i>
+                        <p>点击"开始识别"按钮开始屏幕识别</p>
+                    </div>
+                </div>
+                
+                <div class="screen-overlay" id="screenOverlay"></div>
+            </div>
+        </div>
+        
+        <div class="card fade-in mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-cog me-2"></i>识别控制
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success" onclick="startRecognition()">
+                                <i class="fas fa-play me-1"></i> 开始识别
+                            </button>
+                            <button class="btn btn-warning" onclick="stopRecognition()">
+                                <i class="fas fa-stop me-1"></i> 停止识别
+                            </button>
+                            <button class="btn btn-info" onclick="takeScreenshot()">
+                                <i class="fas fa-camera me-1"></i> 截图
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" onclick="detectElements()">
+                                <i class="fas fa-search me-1"></i> 检测元素
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearHighlights()">
+                                <i class="fas fa-eraser me-1"></i> 清除标注
+                            </button>
+                            <button class="btn btn-danger" onclick="startRecording()">
+                                <i class="fas fa-video me-1"></i> 开始录制
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>检测到的元素
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="element-list" id="elementList">
+                    <div class="text-center text-muted p-3">
+                        <i class="fas fa-spinner fa-spin"></i> 等待识别...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card fade-in mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-magic me-2"></i>OCR文本识别
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">搜索文本</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="searchText" placeholder="输入要查找的文本">
+                        <button class="btn btn-outline-primary" onclick="searchText()">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="ocrResults">
+                    <div class="text-muted">点击"检测元素"开始OCR识别</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card fade-in mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-mouse-pointer me-2"></i>操作面板
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="clickSelectedElement()">
+                        <i class="fas fa-hand-pointer me-1"></i> 点击选中元素
+                    </button>
+                    <button class="btn btn-outline-success" onclick="swipeSelectedElement()">
+                        <i class="fas fa-arrows-alt me-1"></i> 滑动选中元素
+                    </button>
+                    <button class="btn btn-outline-info" onclick="getElementInfo()">
+                        <i class="fas fa-info-circle me-1"></i> 获取元素信息
+                    </button>
+                </div>
+                
+                <hr>
+                
+                <div id="elementInfo">
+                    <h6>元素信息</h6>
+                    <div class="text-muted">选择一个元素查看详细信息</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 录制指示器 -->
+<div class="recording-indicator" id="recordingIndicator">
+    <i class="fas fa-circle me-1"></i> 正在录制
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let isRecognizing = false;
+    let isRecording = false;
+    let detectedElements = [];
+    let selectedElement = null;
+    let screenScale = 1;
+    
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+        // 监听屏幕帧
+        socket.on('screen_frame', function(data) {
+            updateScreenImage(data.image);
+        });
+        
+        // 监听屏幕流状态
+        socket.on('screen_stream_status', function(data) {
+            isRecognizing = data.streaming;
+            updateRecognitionStatus();
+        });
+    });
+    
+    // 开始识别
+    function startRecognition() {
+        if (isRecognizing) {
+            return;
+        }
+        
+        socket.emit('start_screen_stream');
+        showSuccess('开始屏幕识别');
+    }
+    
+    // 停止识别
+    function stopRecognition() {
+        if (!isRecognizing) {
+            return;
+        }
+        
+        socket.emit('stop_screen_stream');
+        showSuccess('停止屏幕识别');
+    }
+    
+    // 更新识别状态
+    function updateRecognitionStatus() {
+        const container = document.getElementById('screenContainer');
+        
+        if (isRecognizing) {
+            container.innerHTML = '<div class="text-center text-white"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">正在识别屏幕...</p></div>';
+        }
+    }
+    
+    // 更新屏幕图像
+    function updateScreenImage(imageData) {
+        const container = document.getElementById('screenContainer');
+        const img = document.createElement('img');
+        img.src = 'data:image/jpeg;base64,' + imageData;
+        img.className = 'screen-image';
+        img.onload = function() {
+            // 计算缩放比例
+            const containerRect = container.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            screenScale = imgRect.width / 1080; // 假设原始屏幕宽度为1080
+            
+            container.innerHTML = '';
+            container.appendChild(img);
+        };
+    }
+    
+    // 截图
+    function takeScreenshot() {
+        fetch('/api/screenshot')
+            .then(response => response.blob())
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = 'screen-image';
+                img.onload = function() {
+                    const container = document.getElementById('screenContainer');
+                    container.innerHTML = '';
+                    container.appendChild(img);
+                };
+            })
+            .catch(error => {
+                showError('截图失败: ' + error);
+            });
+    }
+    
+    // 检测元素
+    function detectElements() {
+        showLoading(document.getElementById('elementList'));
+        
+        // 模拟检测结果
+        setTimeout(() => {
+            const mockElements = [
+                {
+                    type: 'button',
+                    text: '登录',
+                    bbox: [100, 200, 150, 50],
+                    confidence: 0.9,
+                    clickable: true
+                },
+                {
+                    type: 'text',
+                    text: '用户名',
+                    bbox: [200, 300, 100, 30],
+                    confidence: 0.8,
+                    clickable: false
+                },
+                {
+                    type: 'input',
+                    text: '',
+                    bbox: [200, 350, 200, 40],
+                    confidence: 0.7,
+                    clickable: true
+                },
+                {
+                    type: 'image',
+                    text: 'logo',
+                    bbox: [50, 50, 100, 100],
+                    confidence: 0.6,
+                    clickable: true
+                }
+            ];
+            
+            displayElements(mockElements);
+            highlightElements(mockElements);
+        }, 1000);
+    }
+    
+    // 显示元素列表
+    function displayElements(elements) {
+        const container = document.getElementById('elementList');
+        
+        if (elements.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted p-3">未检测到元素</div>';
+            return;
+        }
+        
+        container.innerHTML = elements.map((element, index) => `
+            <div class="element-item" onclick="selectElement(${index})">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-${getElementIcon(element.type)} me-2"></i>
+                        <strong>${element.text || element.type}</strong>
+                        <br>
+                        <small class="text-muted">${element.type} - 置信度: ${Math.round(element.confidence * 100)}%</small>
+                    </div>
+                    <div>
+                        <span class="badge bg-${element.clickable ? 'success' : 'secondary'}">
+                            ${element.clickable ? '可点击' : '不可点击'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        detectedElements = elements;
+    }
+    
+    // 获取元素图标
+    function getElementIcon(type) {
+        const icons = {
+            'button': 'hand-pointer',
+            'text': 'font',
+            'input': 'keyboard',
+            'image': 'image',
+            'link': 'link'
+        };
+        return icons[type] || 'square';
+    }
+    
+    // 高亮元素
+    function highlightElements(elements) {
+        const overlay = document.getElementById('screenOverlay');
+        overlay.innerHTML = '';
+        
+        elements.forEach((element, index) => {
+            const highlight = document.createElement('div');
+            highlight.className = 'element-highlight';
+            highlight.style.left = (element.bbox[0] * screenScale) + 'px';
+            highlight.style.top = (element.bbox[1] * screenScale) + 'px';
+            highlight.style.width = (element.bbox[2] * screenScale) + 'px';
+            highlight.style.height = (element.bbox[3] * screenScale) + 'px';
+            highlight.onclick = (e) => {
+                e.stopPropagation();
+                selectElement(index);
+            };
+            
+            // 添加元素信息提示
+            const info = document.createElement('div');
+            info.className = 'element-info';
+            info.textContent = element.text || element.type;
+            highlight.appendChild(info);
+            
+            overlay.appendChild(highlight);
+        });
+    }
+    
+    // 选择元素
+    function selectElement(index) {
+        // 清除之前的选择
+        document.querySelectorAll('.element-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        document.querySelectorAll('.element-highlight').forEach(highlight => {
+            highlight.classList.remove('selected');
+        });
+        
+        // 选择新元素
+        const elementItems = document.querySelectorAll('.element-item');
+        const highlights = document.querySelectorAll('.element-highlight');
+        
+        if (elementItems[index]) {
+            elementItems[index].classList.add('selected');
+        }
+        if (highlights[index]) {
+            highlights[index].classList.add('selected');
+        }
+        
+        selectedElement = detectedElements[index];
+        updateElementInfo(selectedElement);
+    }
+    
+    // 更新元素信息
+    function updateElementInfo(element) {
+        const container = document.getElementById('elementInfo');
+        
+        if (!element) {
+            container.innerHTML = '<h6>元素信息</h6><div class="text-muted">选择一个元素查看详细信息</div>';
+            return;
+        }
+        
+        container.innerHTML = `
+            <h6>元素信息</h6>
+            <div class="mb-2">
+                <strong>类型:</strong> ${element.type}
+            </div>
+            <div class="mb-2">
+                <strong>文本:</strong> ${element.text || '无'}
+            </div>
+            <div class="mb-2">
+                <strong>位置:</strong> (${element.bbox[0]}, ${element.bbox[1]})
+            </div>
+            <div class="mb-2">
+                <strong>大小:</strong> ${element.bbox[2]} × ${element.bbox[3]}
+            </div>
+            <div class="mb-2">
+                <strong>置信度:</strong> ${Math.round(element.confidence * 100)}%
+            </div>
+            <div class="mb-2">
+                <strong>可点击:</strong> ${element.clickable ? '是' : '否'}
+            </div>
+        `;
+    }
+    
+    // 点击选中元素
+    function clickSelectedElement() {
+        if (!selectedElement) {
+            showError('请先选择一个元素');
+            return;
+        }
+        
+        if (!selectedElement.clickable) {
+            showError('该元素不可点击');
+            return;
+        }
+        
+        const x = selectedElement.bbox[0] + selectedElement.bbox[2] / 2;
+        const y = selectedElement.bbox[1] + selectedElement.bbox[3] / 2;
+        
+        socket.emit('screen_click', { x: x, y: y });
+        showSuccess(`点击元素: ${selectedElement.text || selectedElement.type}`);
+    }
+    
+    // 滑动选中元素
+    function swipeSelectedElement() {
+        if (!selectedElement) {
+            showError('请先选择一个元素');
+            return;
+        }
+        
+        const startX = selectedElement.bbox[0] + selectedElement.bbox[2] / 2;
+        const startY = selectedElement.bbox[1] + selectedElement.bbox[3] / 2;
+        const endX = startX + 100;
+        const endY = startY - 100;
+        
+        socket.emit('screen_swipe', {
+            start_x: startX,
+            start_y: startY,
+            end_x: endX,
+            end_y: endY,
+            duration: 300
+        });
+        
+        showSuccess(`滑动元素: ${selectedElement.text || selectedElement.type}`);
+    }
+    
+    // 获取元素信息
+    function getElementInfo() {
+        if (!selectedElement) {
+            showError('请先选择一个元素');
+            return;
+        }
+        
+        const info = `
+            元素详细信息:
+            类型: ${selectedElement.type}
+            文本: ${selectedElement.text || '无'}
+            位置: (${selectedElement.bbox[0]}, ${selectedElement.bbox[1]})
+            大小: ${selectedElement.bbox[2]} × ${selectedElement.bbox[3]}
+            置信度: ${Math.round(selectedElement.confidence * 100)}%
+            可点击: ${selectedElement.clickable ? '是' : '否'}
+        `;
+        
+        alert(info);
+    }
+    
+    // 搜索文本
+    function searchText() {
+        const searchText = document.getElementById('searchText').value.trim();
+        if (!searchText) {
+            showError('请输入要搜索的文本');
+            return;
+        }
+        
+        // 在检测到的元素中搜索
+        const foundElements = detectedElements.filter(element => 
+            element.text && element.text.toLowerCase().includes(searchText.toLowerCase())
+        );
+        
+        if (foundElements.length === 0) {
+            showError('未找到匹配的文本');
+            return;
+        }
+        
+        // 高亮找到的元素
+        clearHighlights();
+        highlightElements(foundElements);
+        showSuccess(`找到 ${foundElements.length} 个匹配的元素`);
+    }
+    
+    // 清除标注
+    function clearHighlights() {
+        document.getElementById('screenOverlay').innerHTML = '';
+        document.querySelectorAll('.element-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        selectedElement = null;
+        updateElementInfo(null);
+    }
+    
+    // 开始录制
+    function startRecording() {
+        if (isRecording) {
+            stopRecording();
+            return;
+        }
+        
+        isRecording = true;
+        document.getElementById('recordingIndicator').classList.add('active');
+        showSuccess('开始录制屏幕操作');
+    }
+    
+    // 停止录制
+    function stopRecording() {
+        isRecording = false;
+        document.getElementById('recordingIndicator').classList.remove('active');
+        showSuccess('停止录制屏幕操作');
+    }
+    
+    // 监听点击结果
+    socket.on('click_result', function(data) {
+        if (data.success) {
+            showSuccess(`点击成功: (${data.x}, ${data.y})`);
+        } else {
+            showError(`点击失败: ${data.error}`);
+        }
+    });
+    
+    // 监听滑动结果
+    socket.on('swipe_result', function(data) {
+        if (data.success) {
+            showSuccess('滑动成功');
+        } else {
+            showError(`滑动失败: ${data.error}`);
+        }
+    });
+</script>
+{% endblock %}
