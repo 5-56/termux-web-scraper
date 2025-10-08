@@ -6,6 +6,7 @@ AI代理核心模块
 import json
 import logging
 import asyncio
+import time
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
@@ -15,6 +16,8 @@ from ..modules.web_automation import WebAutomation
 from ..modules.ui_automation import UIAutomation
 from ..modules.messaging import MessagingAutomation
 from ..modules.task_scheduler import TaskScheduler
+from ..modules.smart_execution_engine import SmartExecutionEngine
+from ..modules.screen_recognition import ScreenRecognition
 from ..utils.config_manager import ConfigManager
 from ..utils.logger import setup_logger
 
@@ -56,10 +59,18 @@ class AIAgent:
         
         # 初始化各个控制模块
         self.android_controller = AndroidController(self.config)
+        self.screen_recognition = ScreenRecognition(self.android_controller)
         self.web_automation = WebAutomation(self.config)
-        self.ui_automation = UIAutomation(self.config)
-        self.messaging = MessagingAutomation(self.config)
+        self.ui_automation = UIAutomation(self.android_controller, self.config)
+        self.messaging = MessagingAutomation(self.android_controller, self.config)
         self.task_scheduler = TaskScheduler(self.config)
+        
+        # 初始化智能执行引擎
+        self.smart_execution_engine = SmartExecutionEngine(
+            self.config, 
+            self.android_controller, 
+            self.screen_recognition
+        )
         
         # 任务队列和执行状态
         self.task_queue = asyncio.Queue()
@@ -70,7 +81,7 @@ class AIAgent:
     
     async def process_command(self, command: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
-        处理用户指令
+        处理用户指令 - 使用智能执行引擎
         
         Args:
             command: 用户指令文本
@@ -82,20 +93,24 @@ class AIAgent:
         try:
             self.logger.info(f"处理指令: {command}")
             
-            # 1. 理解指令意图
-            intent = await self._understand_intent(command, context)
+            # 使用智能执行引擎处理指令
+            execution_result = await self.smart_execution_engine.execute_task(command, context)
             
-            # 2. 制定执行计划
-            plan = await self._create_execution_plan(intent)
-            
-            # 3. 执行任务
-            result = await self._execute_plan(plan)
+            # 记录任务历史
+            self.task_history.append({
+                "command": command,
+                "result": execution_result,
+                "timestamp": time.time()
+            })
             
             return {
-                "success": True,
-                "intent": intent,
-                "plan": plan,
-                "result": result
+                "success": execution_result.success,
+                "message": execution_result.message,
+                "execution_time": execution_result.execution_time,
+                "iterations": execution_result.iterations,
+                "adaptations_made": execution_result.adaptations_made,
+                "learning_insights": execution_result.learning_insights,
+                "performance_metrics": execution_result.performance_metrics
             }
             
         except Exception as e:
@@ -275,11 +290,14 @@ class AIAgent:
         """启动AI代理系统"""
         self.logger.info("启动羲和AI代理系统")
         
+        # 启动Android控制器
+        await self.android_controller.start()
+        
         # 启动任务调度器
         await self.task_scheduler.start()
         
-        # 启动Android控制器
-        await self.android_controller.start()
+        # 加载学习数据
+        await self.smart_execution_engine.learning_system.load_learning_data()
         
         self.logger.info("羲和AI代理系统启动完成")
     
@@ -287,7 +305,13 @@ class AIAgent:
         """停止AI代理系统"""
         self.logger.info("停止羲和AI代理系统")
         
+        # 关闭智能执行引擎
+        await self.smart_execution_engine.shutdown()
+        
+        # 停止任务调度器
         await self.task_scheduler.stop()
+        
+        # 停止Android控制器
         await self.android_controller.stop()
         
         self.logger.info("羲和AI代理系统已停止")
